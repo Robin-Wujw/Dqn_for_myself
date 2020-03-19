@@ -11,7 +11,7 @@ class Dueling_Double_DQN:
 					learning_rate=0.01,
 					reward_decay=0.9,
 					e_greedy=0.95, replace_target_iter=250, 
-					memory_size=1000, batch_size=256,
+					memory_size=1000, batch_size=128,
 					e_greedy_increment=0.0008,
 					dueling = True,
 					double_q=True,
