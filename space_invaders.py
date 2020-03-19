@@ -15,7 +15,7 @@ sess = tf.Session()
 save_path = 'space_invaders/model.ckpt'
 RL = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=env.observation_space.shape[0], memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.00001,dueling=True,double_q=True,sess=sess,output_graph=True)
+        e_greedy_increment=0.00001,e_greedy_increment=None,dueling=True,double_q=True,sess=sess,output_graph=True)
 total_steps = 0
 RENDER = False
 total_reward = 0 
