@@ -1,5 +1,5 @@
 import gym
-from dueling_double_dqn import Dueling_Double_DQN
+from ddd import Dueling_Double_DQN
 import tensorflow as tf
 import matplotlib.pyplot as plt 
 env = gym.make('SpaceInvaders-ram-v0')
@@ -36,7 +36,7 @@ for i_episode in range(20000):
         if RENDER:env.render()
 
         action = RL.choose_action(observation)
-        
+        print(action)
         observation_, reward, done, info = env.step(action)
 
         RL.store_transition(observation, action, reward, observation_)
@@ -65,16 +65,12 @@ for i_episode in range(20000):
     if i%500 == 0:
         print('Save successfully')
         RL.save(save_path)
-    a = i/100
 RL.plot_cost()
 def plot_reward():
     import numpy as np
     import matplotlib.pyplot as plt 
-    if i<100:
-        pass
-    else:
-        plt.plot(np.arange(a-1),everage_reward_100)
-        plt.ylabel('Reward') 
-        plt.xlabel('training episode')
-        plt.show()
+    plt.plot(np.arange(len(total_reward/100)),everage_reward_100)
+    plt.ylabel('Reward') 
+    plt.xlabel('training episode')
+    plt.show()
 plot_reward()
