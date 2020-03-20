@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 env = gym.make('SpaceInvaders-ram-v0')
 env = env.unwrapped
 
-print(env.action_space)
+print(env.action_space) 
 print(env.observation_space)
 print(env.observation_space.high)
 print(env.observation_space.low)
@@ -56,7 +56,7 @@ for i_episode in range(30000):
     if i>100 and i%5==0:
         sum_r = total_reward[i-1]+total_reward[i-2]+total_reward[i-3]+total_reward[i-4]+total_reward[i-5]
         print(sum_r/5)
-        if sum_r/5 >=600:RENDER=True
+        if sum_r/5 >=300:RENDER=True
     if i%1000 == 0:
         print('save')
         RL.save(save_path)
