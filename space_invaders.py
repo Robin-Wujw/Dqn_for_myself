@@ -21,11 +21,13 @@ RENDER = False
 total_reward = 0 
 i = 0 
 total_reward= []
+everage_reward_100 = []
 try:
     RL.restore(save_path)
+    print("Restore successfully")
 except BaseException:
     print('No model has saved')
-for i_episode in range(30000):
+for i_episode in range(200):
 
     observation = env.reset()
     ep_r = 0
@@ -55,16 +57,19 @@ for i_episode in range(30000):
     i= i +1
     if i>100 and i%5==0:
         sum_r = total_reward[i-1]+total_reward[i-2]+total_reward[i-3]+total_reward[i-4]+total_reward[i-5]
-        print(sum_r/5)
-        if sum_r/5 >=300:RENDER=True
-    if i%1000 == 0:
-        print('save')
+        print("Recent 5 episodes reward:",sum_r/5)
+        if sum_r/5 >=450:RENDER=True
+    if i%100 ==0:
+        everage_reward_100.append(total_reward/i)
+        print("all episodes' everage reward:",total_reward/i)
+    if i%500 == 0:
+        print('Save successfully')
         RL.save(save_path)
 RL.plot_cost()
 def plot_reward():
     import numpy as np
     import matplotlib.pyplot as plt 
-    plt.plot(np.arange(len(total_reward)),total_reward)
+    plt.plot(np.arange(len(total_reward/100)),everage_reward_100)
     plt.ylabel('Reward') 
     plt.xlabel('training episode')
     plt.show()
