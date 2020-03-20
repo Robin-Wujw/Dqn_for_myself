@@ -27,7 +27,7 @@ try:
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
-for i_episode in range(200):
+for i_episode in range(20000):
 
     observation = env.reset()
     ep_r = 0
@@ -59,9 +59,9 @@ for i_episode in range(200):
         sum_r = total_reward[i-1]+total_reward[i-2]+total_reward[i-3]+total_reward[i-4]+total_reward[i-5]
         print("Recent 5 episodes reward:",sum_r/5)
         if sum_r/5 >=450:RENDER=True
-    if i%100 ==0:
-        everage_reward_100.append(total_reward/i)
-        print("all episodes' everage reward:",total_reward/i)
+    if i%100==0:
+        everage_reward_100.append((sum(total_reward)/i))
+        print("all episodes' everage reward:",sum(total_reward)/i)
     if i%500 == 0:
         print('Save successfully')
         RL.save(save_path)
