@@ -8,7 +8,7 @@ class Dueling_Double_DQN:
 		def __init__(self,
 					n_actions,
 					n_features,
-					learning_rate=0.0002,
+					learning_rate=0.001,
 					reward_decay=0.9,
 					e_greedy=0.92, replace_target_iter=250, 
 					memory_size=1000, batch_size=128,
@@ -65,7 +65,7 @@ class Dueling_Double_DQN:
 						b3 = tf.get_variable('b3',[1,self.n_actions],initializer=b_initializer,collections=c_names)
 						self.A = tf.matmul(l2,w3)+b3
 					with tf.variable_scope('Q'):
-						#为了避免最终哦 A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
+						#为了避免最终A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
 						out = self.V + (self.A - tf.reduce_mean(self.A,axis=1,keep_dims=True))
 				else:
 					with tf.variable_scope('Q'):

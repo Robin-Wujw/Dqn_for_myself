@@ -27,7 +27,7 @@ try:
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
-for i_episode in range(10000):
+for i_episode in range(13000):
 
     observation = env.reset()
     ep_r = 0
