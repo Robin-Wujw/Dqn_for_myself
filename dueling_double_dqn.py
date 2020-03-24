@@ -8,10 +8,10 @@ class Dueling_Double_DQN:
 		def __init__(self,
 					n_actions,
 					n_features,
-					learning_rate=0.001,
+					learning_rate=0.001,			
 					reward_decay=0.9,
-					e_greedy=0.92, replace_target_iter=250, 
-					memory_size=1000, batch_size=128,
+					e_greedy=0.9, replace_target_iter=250, 
+					memory_size=1000, batch_size=64,
 					e_greedy_increment=0.0008,
 					dueling = True,
 					double_q=True,
@@ -160,7 +160,6 @@ class Dueling_Double_DQN:
 					feed_dict={self.s:batch_memory[:,:self.n_features],
 						self.q_target:q_target})
 			self.cost_his.append(self.cost)#记录cost误差 
-
 			#逐渐增加epsilon 降低行为的随机性 
 			self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max 
 			self.learn_step_counter += 1 

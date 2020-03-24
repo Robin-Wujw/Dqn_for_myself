@@ -1,5 +1,5 @@
 import gym
-from dueling_dqn import DuelingDQN
+from dueling_double_noisy_dqn import Dueling_Double_DQN
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -13,14 +13,14 @@ ACTION_SPACE = 25
 
 sess = tf.Session()
 with tf.variable_scope('natural'):
-    natural_DQN = DuelingDQN(
+    natural_DQN = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=3, memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.001, sess=sess, dueling=False)
+        e_greedy_increment=0.001, sess=sess, dueling=False,double_q=False,noisy=False,output_graph=True)
 
 with tf.variable_scope('dueling'):
-    dueling_DQN = DuelingDQN(
+    dueling_DQN = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=3, memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.001, sess=sess, dueling=True, output_graph=True)
+        e_greedy_increment=0.001, sess=sess, dueling=True,double_q=True,noisy=False,output_graph=True)
 
 sess.run(tf.global_variables_initializer())
 
@@ -31,7 +31,7 @@ def train(RL):
     observation = env.reset()
     while True:
         # if total_steps-MEMORY_SIZE > 9000: env.render()
-        env.render()
+
         action = RL.choose_action(observation)
 
         f_action = (action-(ACTION_SPACE-1)/2)/((ACTION_SPACE-1)/4)   # [-2 ~ 2] float actions

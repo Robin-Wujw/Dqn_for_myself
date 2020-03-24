@@ -1,5 +1,5 @@
 import gym
-from dueling_double_dqn import Dueling_Double_DQN
+from dueling_double_noisy_dqn import Dueling_Double_DQN
 import tensorflow as tf
 import matplotlib.pyplot as plt 
 env = gym.make('SpaceInvaders-ram-v0')
@@ -15,7 +15,7 @@ sess = tf.Session()
 save_path = 'space_invaders/model.ckpt'
 RL = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=env.observation_space.shape[0], memory_size=MEMORY_SIZE,
-        e_greedy_increment=None,dueling=True,double_q=True,sess=sess,output_graph=True)
+        e_greedy_increment=None,dueling=True,double_q=True,noisy=False,sess=sess,output_graph=True)
 total_steps = 0
 RENDER = False
 total_reward = 0 
@@ -27,7 +27,7 @@ try:
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
-for i_episode in range(13000):
+for i_episode in range(10000):
 
     observation = env.reset()
     ep_r = 0

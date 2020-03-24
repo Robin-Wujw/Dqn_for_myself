@@ -1,8 +1,8 @@
 import gym
-from ddd import Dueling_Double_DQN
+from dueling_double_noisy_dqn import Dueling_Double_DQN
 import tensorflow as tf
 import matplotlib.pyplot as plt 
-env = gym.make('SpaceInvaders-ram-v0')
+env = gym.make('CartPole-v0')
 env = env.unwrapped
 
 print(env.action_space) 
@@ -12,12 +12,12 @@ print(env.observation_space.low)
 ACTION_SPACE = env.action_space.n
 MEMORY_SIZE = 5000
 sess = tf.Session()
-save_path = 'space_invaders/model.ckpt'
+save_path = 'space_invaders_noisy/model.ckpt'
 RL = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=env.observation_space.shape[0], memory_size=MEMORY_SIZE,
-        e_greedy_increment=None,dueling=True,double_q=True,sess=sess,output_graph=True)
+        dueling=True,double_q=True,noisy=False,sess=sess,output_graph=True)
 total_steps = 0
-RENDER = False
+RENDER = True
 total_reward = 0 
 i = 0 
 total_reward= []
@@ -27,7 +27,7 @@ try:
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
-for i_episode in range(20000):
+for i_episode in range(10000):
 
     observation = env.reset()
     ep_r = 0
@@ -36,9 +36,12 @@ for i_episode in range(20000):
         if RENDER:env.render()
 
         action = RL.choose_action(observation)
-        print(action)
         observation_, reward, done, info = env.step(action)
-
+        
+        x, x_dot, theta, theta_dot = observation_
+        r1 = (env.x_threshold - abs(x))/env.x_threshold - 0.8
+        r2 = (env.theta_threshold_radians - abs(theta))/env.theta_threshold_radians - 0.5
+        reward = r1 + r2   # 总 reward 是 r1 和 r2 的结合, 既考虑位置, 也考虑角度, 这样 DQN 学习更有效率
         RL.store_transition(observation, action, reward, observation_)
 
         if total_steps > 1000:
@@ -46,9 +49,14 @@ for i_episode in range(20000):
 
         ep_r += reward
         if done:
-            print('Epi: ', i_episode+1,
+            if RL.noisy:
+                print('Epi: ', i_episode+1,
                   '| Ep_r: ', round(ep_r, 4),
-                  '| Epsilon: ', round(RL.epsilon, 2))
+                  '| Epsilon: ', RL.epsilon)                
+            else:    
+                print('Epi: ', i_episode+1,
+                      '| Ep_r: ', round(ep_r, 4),
+                      '| Epsilon: ', RL.epsilon)
             break
 
         observation = observation_
@@ -65,11 +73,12 @@ for i_episode in range(20000):
     if i%500 == 0:
         print('Save successfully')
         RL.save(save_path)
+    a=i/100
 RL.plot_cost()
 def plot_reward():
     import numpy as np
     import matplotlib.pyplot as plt 
-    plt.plot(np.arange(len(total_reward/100)),everage_reward_100)
+    plt.plot(np.arange(a),everage_reward_100)
     plt.ylabel('Reward') 
     plt.xlabel('training episode')
     plt.show()

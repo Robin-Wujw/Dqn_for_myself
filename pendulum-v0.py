@@ -1,9 +1,8 @@
 import gym
-from RL_brain_D import DoubleDQN
-import numpy as np
+from dueling_double_noisy_dqn import Dueling_Double_DQN
 import matplotlib.pyplot as plt
 import tensorflow as tf
-
+import numpy as np
 
 env = gym.make('Pendulum-v0')
 env = env.unwrapped
@@ -13,15 +12,15 @@ ACTION_SPACE = 11
 
 sess = tf.Session()
 with tf.variable_scope('Natural_DQN'):
-    natural_DQN = DoubleDQN(
+    natural_DQN = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=3, memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.001, double_q=False, sess=sess
+        e_greedy_increment=0.001, noisy=False,double_q=False, sess=sess
     )
 
 with tf.variable_scope('Double_DQN'):
-    double_DQN = DoubleDQN(
+    double_DQN = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=3, memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.001, double_q=True, sess=sess, output_graph=True)
+        e_greedy_increment=0.001,noisy=False,double_q=True, sess=sess, output_graph=True)
 
 sess.run(tf.global_variables_initializer())
 
