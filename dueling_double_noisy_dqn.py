@@ -213,11 +213,10 @@ class Dueling_Double_DQN:
 					feed_dict={self.s:batch_memory[:,:self.n_features],
 						self.q_target:q_target})
 			self.cost_his.append(self.cost)#记录cost误差 
-			print(self.cost)
 			#逐渐增加epsilon 降低行为的随机性 
 			self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max 
 			self.learn_step_counter += 1 
-
+			return self.cost
 		def save(self,save_path):
 			#保存神经网络参数
 			tf.train.Saver().save(self.sess,save_path) 

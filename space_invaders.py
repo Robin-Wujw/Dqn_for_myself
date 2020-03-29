@@ -55,7 +55,7 @@ for i_episode in range(10000):
         observation = observation_
         total_steps += 1
         if total_steps % 1000 ==0:
-            print(RL.cost)
+            print(RL.learn())
     total_reward.append(ep_r) 
     i= i +1
     if i%5==0:
