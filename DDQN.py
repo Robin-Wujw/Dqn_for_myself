@@ -1,5 +1,5 @@
 import gym
-from dueling_double_noisy_dqn import Dueling_Double_DQN
+from dueling_dqn import DuelingDQN
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
@@ -12,15 +12,15 @@ ACTION_SPACE = 11    # 将原本的连续动作分离成 11 个动作
 
 sess = tf.Session()
 with tf.variable_scope('Natural_DQN'):
-    natural_DQN = Dueling_Double_DQN(
+    natural_DQN = DuelingDQN(
         n_actions=ACTION_SPACE, n_features=3, memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.001, double_q=False,dueling=True,noisy=False,sess=sess
+        e_greedy_increment=0.001, double=False,dueling=True,noisy=False,sess=sess
     )
 
 with tf.variable_scope('Double_DQN'):
-    double_DQN = Dueling_Double_DQN(
+    double_DQN = DuelingDQN(
         n_actions=ACTION_SPACE, n_features=3, memory_size=MEMORY_SIZE,
-        e_greedy_increment=0.001, double_q=True,dueling=True, sess=sess,noisy=False,output_graph=True)
+        e_greedy_increment=0.001, double=False,dueling=True, sess=sess,noisy=True,output_graph=True)
 
 sess.run(tf.global_variables_initializer())
 

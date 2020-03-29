@@ -1,5 +1,5 @@
 import gym
-from RL_brain import DeepQNetwork
+from dueling_double_noisy_dqn import Dueling_Double_DQN
 import tensorflow as tf
 env =  gym.make('CartPole-v0')
 env =  env.unwrapped 
@@ -9,9 +9,11 @@ print(env.observation_space)
 print(env.observation_space.high)
 print(env.observation_space.low)
 
-RL = DeepQNetwork(n_actions = env.action_space.n, n_features=env.observation_space.shape[0], learning_rate=0.01,e_greedy=0.99, replace_target_iter=100, memory_size=2000,e_greedy_increment=0.0008)
+RL = Dueling_Double_DQN(n_actions = env.action_space.n, 
+	n_features=env.observation_space.shape[0], learning_rate=0.01,e_greedy=0.9,
+	 replace_target_iter=100, memory_size=2000,e_greedy_increment=0.0008,double=False,dueling=False,noisy=False)
 total_step = 0 
-for episode in range(1000):
+for episode in range(2000):
 	observation = env.reset()
 	ep_r = 0 
 	while True:

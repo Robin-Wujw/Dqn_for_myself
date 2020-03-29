@@ -1,21 +1,21 @@
 import numpy as np 
 import pandas as pd
-from tensorflow.python.framework import ops
 import tensorflow as tf
 import os 
+from tensorflow.python.framework import ops
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 class Dueling_Double_DQN:
 	with tf.device('/gpu:0'):
 		def __init__(self,
 					n_actions,
 					n_features,
-					learning_rate=0.001,
-					reward_decay=0.9,
-					e_greedy=0.92, replace_target_iter=200, 
-					memory_size=1000, batch_size=32,
-					e_greedy_increment=0.0008,
+					learning_rate=0.0005,			
+					reward_decay=0.99,
+					e_greedy=0.9, replace_target_iter=500, 
+					memory_size=1000, batch_size=128,
+					e_greedy_increment=0.00008,
 					dueling = True,
-					double_q=True,
+					double=True,
 					noisy = True,
 					sess = None, 
 					output_graph=True):
@@ -31,10 +31,9 @@ class Dueling_Double_DQN:
 			self.epsilon = 0 if e_greedy_increment is not None else self.epsilon_max
 			self.learn_step_counter = 0 
 			self.dueling = dueling
-			self.noisy = noisy
-			self.double_q = double_q
+			self.double = double
 			self.memory = np.zeros((self.memory_size,n_features*2+2))
-
+			self.noisy = noisy
 			self._build_net()
 			t_params = tf.get_collection('target_net_params')
 			e_params = tf.get_collection('eval_net_params')
@@ -49,8 +48,8 @@ class Dueling_Double_DQN:
 			self.sess.run(tf.global_variables_initializer())
 			self.cost_his = []
 		def _build_net(self):
-			def build_layers(s,c_names,n_l1,w_initializer,b_initializer):
-				def noisy_dense(inputs, units, bias_shape, c_names, w_i=w_initializer, b_i=b_initializer, activation=tf.nn.relu, noisy_distribution='independent'):
+			n_l1, n_l2,w_initializer, b_initializer = 512,128,tf.random_normal_initializer(-0.1,0.1), tf.constant_initializer(0.1)  # config of layers			
+			def noisy_dense(inputs, units, bias_shape, c_names, w_i=w_initializer, b_i=b_initializer, activation=tf.nn.relu, noisy_distribution='factorised'):
 					def f(e_list):
 						return tf.multiply(tf.sign(e_list), tf.pow(tf.abs(e_list), 0.5))
 
@@ -60,7 +59,7 @@ class Dueling_Double_DQN:
 					if len(inputs.shape) > 2:
 						inputs = tf.contrib.layers.flatten(inputs)
 					flatten_shape = inputs.shape[1]
-					weights = tf.get_variable('weights', shape=[flatten_shape, units], initializer=w_i,collections=c_names)
+					weights = tf.get_variable('weights', shape=[flatten_shape, units], initializer=w_i)
 					w_sigma = tf.get_variable('w_sigma', [flatten_shape, units], initializer=w_i, collections=c_names)
 					if noisy_distribution == 'independent':
 						weights += tf.multiply(tf.random_normal(shape=w_sigma.shape), w_sigma)
@@ -71,19 +70,20 @@ class Dueling_Double_DQN:
 					dense = tf.matmul(inputs, weights)
 					if bias_shape is not None:
 						assert bias_shape[0] == units
-						biases = tf.get_variable('biases', shape=bias_shape, initializer=b_i,collections=c_names)
+						biases = tf.get_variable('biases', shape=bias_shape, initializer=b_i)
 						b_noise = tf.get_variable('b_noise', [1, units], initializer=b_i, collections=c_names)
 						if noisy_distribution == 'independent':
 							biases += tf.multiply(tf.random_normal(shape=b_noise.shape), b_noise)
 						elif noisy_distribution == 'factorised':
 							biases += tf.multiply(noise_2, b_noise)
 						return activation(dense + biases) if activation is not None else dense + biases
-					return activation(dense) if activation is not None else dense				
+					return activation(dense) if activation is not None else dense			
+			def build_layers(s,c_names,n_l1,n_l2,w_initializer,b_initializer,reg=None):
 				if self.noisy:
 					with tf.variable_scope('l1'):
-						l1 = noisy_dense(s,n_l1,[n_l1],c_names)
+						l1 = noisy_dense(s,n_l1,[n_l1],c_names,activation=tf.nn.relu)
 					with tf.variable_scope('l2'):
-						l2 = noisy_dense(l1,n_l2,[n_l2],c_names)
+						l2 = noisy_dense(l1,n_l2,[n_l2],c_names,activation=tf.nn.relu)
 					if self.dueling:
 						with tf.variable_scope('Value'):
 							self.V =noisy_dense(l2,1,[1],c_names,activation=None)
@@ -95,7 +95,7 @@ class Dueling_Double_DQN:
 					else:
 						with tf.variable_scope('Q'):
 							out =noisy_dense(l2,self.n_actions,[self.n_actions],c_names,activation=None)
-					return out 					
+					return out
 				else:
 					with tf.variable_scope('l1'):
 						w1 = tf.get_variable('w1',[self.n_features,n_l1],initializer=w_initializer,collections=c_names)
@@ -115,40 +115,39 @@ class Dueling_Double_DQN:
 							b4 = tf.get_variable('b4',[1,self.n_actions],initializer=b_initializer,collections=c_names)
 							self.A = tf.matmul(l2,w4)+b4
 						with tf.variable_scope('Q'):
-							#为了避免最终哦 A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
+							#为了避免最终A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
 							out = self.V + (self.A - tf.reduce_mean(self.A,axis=1,keep_dims=True))
 					else:
 						with tf.variable_scope('Q'):
 							w5 = tf.get_variable('w5',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
 							b5 = tf.get_variable('b5',[1,self.n_actions],initializer=b_initializer,collections=c_names)
 							out = tf.matmul(l2,w5)+b5
-
 					return out 
+
+						
 			# -------------- 创建 eval 神经网络, 及时提升参数 --------------
 			self.s = tf.placeholder(tf.float32, [None, self.n_features], name='s')  # 用来接收 observation
 			self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Q_target') # 用来接收 q_target 的值, 这个之后会通过计算得到
 			with tf.variable_scope('eval_net'):
 				# c_names(collections_names) 是在更新 target_net 参数时会用到
 				c_names,n_l1, n_l2,w_initializer, b_initializer = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES],512, \
-				128,tf.random_normal_initializer(0.,0.3), tf.constant_initializer(0.1)  # config of layers
-
-				self.q_eval = build_layers(self.s,c_names,n_l1,n_l2,w_initializer,b_initializer)
+				128,tf.random_normal_initializer(-0.1,0.1), tf.constant_initializer(0.1)  # config of layers
+				regularizer = tf.contrib.layers.l2_regularizer(scale=0.2)  # 注意：只有select网络有l2正则化
+				self.q_eval = build_layers(self.s,c_names,n_l1,n_l2,w_initializer,b_initializer,regularizer)
 
 
 			with tf.variable_scope('loss'): # 求误差
 				self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
-			with tf.variable_scope('train'):# 梯度下降
-				self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+			with tf.variable_scope('train'):    # 梯度下降
+				self._train_op = tf.train.RMSPropOptimizer(self.lr,0.9,0.999,1e-6).minimize(self.loss)
 
 			# ---------------- 创建 target 神经网络, 提供 target Q ---------------------
-			self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')# 接收下个 observation
+			self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # 接收下个 observation
 			with tf.variable_scope('target_net'):
 				# c_names(collections_names) 是在更新 target_net 参数时会用到
 				c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
 
 				self.q_next = build_layers(self.s_,c_names,n_l1,n_l2,w_initializer,b_initializer)
-
-				
 
 		def choose_action(self,observation):
 			#统一observation的shape(1,size_of_observation) 统一维度:（env中是[1,size of observation])
@@ -161,7 +160,7 @@ class Dueling_Double_DQN:
 			self.running_q = self.running_q*0.99+0.01*np.max(action_value)
 			self.q.append(self.running_q)
 			if self.noisy:
-				pass 
+				pass
 			else:
 				if np.random.uniform() > self.epsilon:
 					action = np.random.randint(0,self.n_actions)
@@ -178,7 +177,7 @@ class Dueling_Double_DQN:
 			#检查是否替换target_net参数 
 			if self.learn_step_counter % self.replace_target_iter ==0:
 				self.sess.run(self.replace_target_op)
-				print('\ntarget_params_replaced\n')
+				#print('\ntarget_params_replaced\n')
 			#从memory中随机抽取batch_size这么多记忆 
 			if self.memory_counter > self.memory_size:
 				sample_index = np.random.choice(self.memory_size,size=self.batch_size)
@@ -202,7 +201,7 @@ class Dueling_Double_DQN:
 			eval_act_index = batch_memory[:,self.n_features].astype(int)
 			#即RL.store_transition(observation, action, reward, observation_)中的action，注意从0开始记，所以eval_act_index得到的是action那一列
 			reward = batch_memory[:,self.n_features+1] #batch_memory [s,r,a,s_]
-			if self.double_q:
+			if self.double:
 				max_act_next = np.argmax(q_eval_next,axis=1)
 				selected_q_next = q_next[batch_index,max_act_next]
 			else:
@@ -214,11 +213,9 @@ class Dueling_Double_DQN:
 					feed_dict={self.s:batch_memory[:,:self.n_features],
 						self.q_target:q_target})
 			self.cost_his.append(self.cost)#记录cost误差 
-			if self.noisy:
-				pass
-			else:	
-				#逐渐增加epsilon 降低行为的随机性 
-				self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max 
+			print(self.cost)
+			#逐渐增加epsilon 降低行为的随机性 
+			self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max 
 			self.learn_step_counter += 1 
 
 		def save(self,save_path):

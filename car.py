@@ -1,52 +1,38 @@
 import gym
 from RL_brain import DeepQNetwork
-
-env = gym.make('MountainCar-v0')
-env = env.unwrapped
+import tensorflow as tf
+env =  gym.make('CartPole-v0')
+env =  env.unwrapped 
 
 print(env.action_space)
 print(env.observation_space)
 print(env.observation_space.high)
 print(env.observation_space.low)
 
-RL = DeepQNetwork(n_actions=3, n_features=2, learning_rate=0.001, e_greedy=0.96,
-                  replace_target_iter=300, memory_size=3000,
-                  e_greedy_increment=0.0001,)
-
-total_steps = 0
-
-
-for i_episode in range(200):
-
-    observation = env.reset()
-    ep_r = 0
-    while True:
-        env.render()
-
-        action = RL.choose_action(observation)
-
-        observation_, reward, done, info = env.step(action)
-
-        position, velocity = observation_
-
-        # 车开得越高 reward 越大
-        reward = abs(position - (-0.5))
-
-        RL.store_transition(observation, action, reward, observation_)
-
-        if total_steps > 1000:
-            RL.learn()
-
-        ep_r += reward
-        if done:
-            get = '| Get' if observation_[0] >= env.unwrapped.goal_position else '| ----'
-            print('Epi: ', i_episode,
-                  get,
-                  '| Ep_r: ', round(ep_r, 4),
-                  '| Epsilon: ', round(RL.epsilon, 2))
-            break
-
-        observation = observation_
-        total_steps += 1
-
+RL = DeepQNetwork(n_actions = env.action_space.n, 
+  n_features=env.observation_space.shape[0], learning_rate=0.01,e_greedy=0.99,
+   replace_target_iter=100, memory_size=2000,e_greedy_increment=0.0008)
+total_step = 0 
+for episode in range(1000):
+  observation = env.reset()
+  ep_r = 0 
+  while True:
+    env.render()
+    action = RL.choose_action(observation)
+    observation_,reward,done,info = env.step(action)
+    x, x_dot, theta, theta_dot = observation_
+    r1 = (env.x_threshold - abs(x))/env.x_threshold - 0.8
+    r2 = (env.theta_threshold_radians - abs(theta))/env.theta_threshold_radians - 0.5
+    reward = r1 + r2   # 总 reward 是 r1 和 r2 的结合, 既考虑位置, 也考虑角度, 这样 DQN 学习更有效率
+    RL.store_transition(observation,action,reward,observation_)
+    if total_step>1000:
+      RL.learn()
+    ep_r += reward 
+    if done:
+      print('episode:',episode, 
+          'ep_r:',round(ep_r,2),
+          'epsilon:',round(RL.epsilon,2))
+      break
+    observation = observation_
+    total_step += 1 
 RL.plot_cost()

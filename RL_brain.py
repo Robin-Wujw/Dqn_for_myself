@@ -11,7 +11,7 @@ class DeepQNetwork:
             self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Q_target') # 用来接收 q_target 的值, 这个之后会通过计算得到
             with tf.variable_scope('eval_net'):
                 # c_names(collections_names) 是在更新 target_net 参数时会用到
-                c_names, n_l1, w_initializer, b_initializer = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 10, \
+                c_names, n_l1,n_l2,w_initializer, b_initializer = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 512, 128,\
                 tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
 
                 # eval_net 的第一层. collections 是在更新 target_net 参数时会用到
@@ -19,12 +19,15 @@ class DeepQNetwork:
                     w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
                     b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
                     l1 = tf.nn.relu(tf.matmul(self.s, w1) + b1)
-
+                with tf.variable_scope('l2'):
+                    w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
+                    b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
+                    l2 = tf.nn.relu(tf.matmul(l1, w2) + b2)
                 # eval_net 的第二层. collections 是在更新 target_net 参数时会用到
                 with tf.variable_scope('l2'):
-                    w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                    b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                    self.q_eval = tf.matmul(l1, w2) + b2
+                    w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
+                    b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                    self.q_eval = tf.matmul(l2, w3) + b3
 
             with tf.variable_scope('loss'): # 求误差
                 self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
@@ -41,13 +44,16 @@ class DeepQNetwork:
                 with tf.variable_scope('l1'):
                     w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
                     b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                    l1 = tf.nn.relu(tf.matmul(self.s_, w1) + b1)
-
-                # target_net 的第二层. collections 是在更新 target_net 参数时会用到
+                    l1 = tf.nn.relu(tf.matmul(self.s, w1) + b1)
                 with tf.variable_scope('l2'):
-                    w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                    b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                    self.q_next = tf.matmul(l1, w2) + b2
+                    w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
+                    b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
+                    l2 = tf.nn.relu(tf.matmul(l1, w2) + b2)
+                # eval_net 的第二层. collections 是在更新 target_net 参数时会用到
+                with tf.variable_scope('l2'):
+                    w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
+                    b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                    self.q_next = tf.matmul(l2, w3) + b3
     def __init__(self,
                 n_actions,
                 n_features,

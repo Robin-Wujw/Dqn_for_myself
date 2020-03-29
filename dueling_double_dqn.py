@@ -14,7 +14,7 @@ class Dueling_Double_DQN:
 					memory_size=1000, batch_size=64,
 					e_greedy_increment=0.0008,
 					dueling = True,
-					double_q=True,
+					double=True,
 					sess = None, 
 					output_graph=True):
 			self.n_actions = n_actions
@@ -29,7 +29,7 @@ class Dueling_Double_DQN:
 			self.epsilon = 0 if e_greedy_increment is not None else self.epsilon_max
 			self.learn_step_counter = 0 
 			self.dueling = dueling
-			self.double_q = double_q
+			self.double = double
 			self.memory = np.zeros((self.memory_size,n_features*2+2))
 
 			self._build_net()
@@ -61,17 +61,17 @@ class Dueling_Double_DQN:
 						b3 = tf.get_variable('b3',[1,1],initializer=b_initializer,collections=c_names)
 						self.V = tf.matmul(l2,w3)+b3
 					with tf.variable_scope('Advantage'):
-						w3 = tf.get_variable('w3',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
-						b3 = tf.get_variable('b3',[1,self.n_actions],initializer=b_initializer,collections=c_names)
-						self.A = tf.matmul(l2,w3)+b3
+						w4 = tf.get_variable('w4',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
+						b4 = tf.get_variable('b4',[1,self.n_actions],initializer=b_initializer,collections=c_names)
+						self.A = tf.matmul(l2,w4)+b4
 					with tf.variable_scope('Q'):
 						#为了避免最终A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
 						out = self.V + (self.A - tf.reduce_mean(self.A,axis=1,keep_dims=True))
 				else:
 					with tf.variable_scope('Q'):
-						w3 = tf.get_variable('w2',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
-						b3 = tf.get_variable('b2',[1,self.n_actions],initializer=b_initializer,collections=c_names)
-						out = tf.matmul(l2,w3)+b3
+						w5 = tf.get_variable('w5',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
+						b5 = tf.get_variable('b5',[1,self.n_actions],initializer=b_initializer,collections=c_names)
+						out = tf.matmul(l2,w5)+b5
 				return out 
 
 						
@@ -148,7 +148,7 @@ class Dueling_Double_DQN:
 			eval_act_index = batch_memory[:,self.n_features].astype(int)
 			#即RL.store_transition(observation, action, reward, observation_)中的action，注意从0开始记，所以eval_act_index得到的是action那一列
 			reward = batch_memory[:,self.n_features+1] #batch_memory [s,r,a,s_]
-			if self.double_q:
+			if self.double:
 				max_act_next = np.argmax(q_eval_next,axis=1)
 				selected_q_next = q_next[batch_index,max_act_next]
 			else:

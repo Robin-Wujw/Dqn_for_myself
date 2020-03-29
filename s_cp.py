@@ -1,5 +1,5 @@
 import gym
-from dueling_double_noisy_dqn import Dueling_Double_DQN
+from dueling_dqn import DuelingDQN
 import tensorflow as tf
 import matplotlib.pyplot as plt 
 env = gym.make('CartPole-v0')
@@ -13,9 +13,9 @@ ACTION_SPACE = env.action_space.n
 MEMORY_SIZE = 5000
 sess = tf.Session()
 save_path = 'space_invaders_noisy/model.ckpt'
-RL = Dueling_Double_DQN(
+RL = DuelingDQN(
         n_actions=ACTION_SPACE, n_features=env.observation_space.shape[0], memory_size=MEMORY_SIZE,
-        dueling=True,double_q=True,noisy=False,sess=sess,output_graph=True)
+        dueling=True,double=True,noisy=True,sess=sess,output_graph=True)
 total_steps = 0
 RENDER = True
 total_reward = 0 
@@ -34,8 +34,10 @@ for i_episode in range(10000):
 
     while True:
         if RENDER:env.render()
-
-        action = RL.choose_action(observation)
+        if RL.noisy:
+            action = RL.noisy_action(observation)
+        else:
+            action = RL.choose_action(observation)
         observation_, reward, done, info = env.step(action)
         
         x, x_dot, theta, theta_dot = observation_
@@ -43,10 +45,8 @@ for i_episode in range(10000):
         r2 = (env.theta_threshold_radians - abs(theta))/env.theta_threshold_radians - 0.5
         reward = r1 + r2   # 总 reward 是 r1 和 r2 的结合, 既考虑位置, 也考虑角度, 这样 DQN 学习更有效率
         RL.store_transition(observation, action, reward, observation_)
-
         if total_steps > 1000:
-            RL.learn()
-
+            RL.learn()  
         ep_r += reward
         if done:
             if RL.noisy:
@@ -70,7 +70,7 @@ for i_episode in range(10000):
     if i%100==0:
         everage_reward_100.append((sum(total_reward)/i))
         print("all episodes' everage reward:",sum(total_reward)/i)
-    if i%500 == 0:
+    if i%50000 == 0:
         print('Save successfully')
         RL.save(save_path)
     a=i/100

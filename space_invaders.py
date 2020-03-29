@@ -10,20 +10,21 @@ print(env.observation_space)
 print(env.observation_space.high)
 print(env.observation_space.low)
 ACTION_SPACE = env.action_space.n
-MEMORY_SIZE = 5000
+MEMORY_SIZE = 1024000
 sess = tf.Session()
 save_path = 'space_invaders/model.ckpt'
 RL = Dueling_Double_DQN(
         n_actions=ACTION_SPACE, n_features=env.observation_space.shape[0], memory_size=MEMORY_SIZE,
-        e_greedy_increment=None,dueling=True,double_q=True,noisy=False,sess=sess,output_graph=True)
+        e_greedy_increment=0.00002,dueling=True,double=True,noisy=False,sess=sess,output_graph=True)
 total_steps = 0
 RENDER = False
 total_reward = 0 
 i = 0 
 total_reward= []
-everage_reward_100 = []
+everage_reward_20 = []
 try:
     RL.restore(save_path)
+    RL.e_greedy_increment = None
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
@@ -41,7 +42,7 @@ for i_episode in range(10000):
 
         RL.store_transition(observation, action, reward, observation_)
 
-        if total_steps > 1000:
+        if (total_steps > 1000) and (total_steps%5==0):
             RL.learn()
 
         ep_r += reward
@@ -53,28 +54,30 @@ for i_episode in range(10000):
 
         observation = observation_
         total_steps += 1
+        if total_steps % 1000 ==0:
+            print(RL.cost)
     total_reward.append(ep_r) 
     i= i +1
-    if i>100 and i%5==0:
+    if i%5==0:
         sum_r = total_reward[i-1]+total_reward[i-2]+total_reward[i-3]+total_reward[i-4]+total_reward[i-5]
-        print("Recent 5 episodes reward:",sum_r/5)
-        if sum_r/5 >=550:RENDER=True
-    if i%100==0:
-        everage_reward_100.append((sum(total_reward)/i))
-        print("all episodes' everage reward:",sum(total_reward)/i)
-    if i%500 == 0:
+        print("Recent 5 episodes reward:",round(sum_r/5,5))
+        if sum_r/5 >=600:RENDER=True
+    if i%20==0:
+        everage_reward_20.append((sum(total_reward)/i))
+        print("all episodes' everage reward:",round(sum(total_reward)/i,5))
+    if i%300 == 0:
         print('Save successfully')
         RL.save(save_path)
-    a = i/100
+    a = i/20
 RL.plot_cost()
 def plot_reward():
     import numpy as np
     import matplotlib.pyplot as plt 
-    if i<100:
+    if i<40:
         pass
     else:
-        plt.plot(np.arange(a),everage_reward_100)
+        plt.plot(np.arange(a),  everage_reward_20,5)
         plt.ylabel('Reward') 
-        plt.xlabel('training episode')
+        plt.xlabel('training every 20 episodes')
         plt.show()
 plot_reward()
