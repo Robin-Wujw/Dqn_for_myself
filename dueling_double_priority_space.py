@@ -121,8 +121,8 @@ class DQNPrioritizedReplay:
             self,
             n_actions,
             n_features,
-            learning_rate=0.00025,
-            reward_decay=0.9,
+            learning_rate=0.0005,
+            reward_decay=0.99,
             e_greedy=0.9,
             replace_target_iter=300,
             memory_size=1024000,
@@ -295,3 +295,15 @@ class DQNPrioritizedReplay:
 
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
+    def save(self,save_path):
+        #保存神经网络参数
+        tf.train.Saver().save(self.sess,save_path) 
+    def restore(self,save_path):
+        #读取神经网络模型参数的方法
+        tf.train.Saver().restore(self.sess,save_path)
+    def plot_cost(self):
+        import matplotlib.pyplot as plt 
+        plt.plot(np.arange(len(self.cost_his)),self.cost_his)
+        plt.ylabel('Cost') 
+        plt.xlabel('training steps')
+        plt.show()

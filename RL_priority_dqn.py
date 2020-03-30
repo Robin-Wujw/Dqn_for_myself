@@ -121,7 +121,7 @@ class DQNPrioritizedReplay:
             self,
             n_actions,
             n_features,
-            learning_rate=0.00001,
+            learning_rate=0.0005,
             reward_decay=0.9,
             e_greedy=0.9,
             replace_target_iter=250,
@@ -267,3 +267,4 @@ class DQNPrioritizedReplay:
 
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
+        print(self.cost)

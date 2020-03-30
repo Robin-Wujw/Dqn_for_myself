@@ -11,7 +11,7 @@ class Dueling_Double_DQN:
 					n_features,
 					learning_rate=0.0005,			
 					reward_decay=0.99,
-					e_greedy=0.9, replace_target_iter=500, 
+					e_greedy=0.9, replace_target_iter=300, 
 					memory_size=1000, batch_size=32,
 					e_greedy_increment=0.00008,
 					dueling = True,
@@ -38,8 +38,9 @@ class Dueling_Double_DQN:
 			t_params = tf.get_collection('target_net_params')
 			e_params = tf.get_collection('eval_net_params')
 			self.replace_target_op = [tf.assign(t,e) for t,e in zip(t_params,e_params)]
+			gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.333)    
 			if sess is None:
-				self.sess  = tf.Session()
+				self.sess  = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 				self.sess.run(tf.global_variables_initializer())
 			else:
 				self.sess = sess 
@@ -139,7 +140,7 @@ class Dueling_Double_DQN:
 			with tf.variable_scope('loss'): # 求误差
 				self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
 			with tf.variable_scope('train'):    # 梯度下降
-				self._train_op = tf.train.RMSPropOptimizer(self.lr,0.9,0.999,1e-6).minimize(self.loss)
+				self._train_op = tf.train.AdamOptimizer(self.lr,0.9,0.999,1e-6).minimize(self.loss)
 
 			# ---------------- 创建 target 神经网络, 提供 target Q ---------------------
 			self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # 接收下个 observation
@@ -216,7 +217,6 @@ class Dueling_Double_DQN:
 			#逐渐增加epsilon 降低行为的随机性 
 			self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max 
 			self.learn_step_counter += 1 
-			return self.cost
 		def save(self,save_path):
 			#保存神经网络参数
 			tf.train.Saver().save(self.sess,save_path) 
