@@ -24,7 +24,7 @@ episodes_reward= []
 recent_100episodes_reward=[]
 try:
     RL.restore(save_path)
-    RL.epsilon = 0.9
+    RL.epsilon = 0.95
     print("Restore successfully")
 except BaseException:
     print('No model has saved')

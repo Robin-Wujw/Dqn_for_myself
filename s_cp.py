@@ -11,7 +11,7 @@ print(env.observation_space.high)
 print(env.observation_space.low)
 ACTION_SPACE = env.action_space.n
 MEMORY_SIZE = 1024000
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.6)    
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)    
 sess  = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 save_path = 'space_invaders_pri/model.ckpt'
 RL = DQNPrioritizedReplay(
@@ -25,7 +25,7 @@ episodes_reward= []
 recent_100episodes_reward=[]
 try:
     RL.restore(save_path)
-    RL.epsilon = 0.9
+    RL.epsilon = 0.95
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
