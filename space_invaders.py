@@ -20,19 +20,20 @@ total_steps = 0
 RENDER = False
 i = 0
 j = 0
-recent_100episodes_reward= []
+episodes_reward= []
+recent_100episodes_reward=[]
 try:
     RL.restore(save_path)
     RL.epsilon = 0.9
     print("Restore successfully")
 except BaseException:
     print('No model has saved')
-for i_episode in range(10000):
+for i_episode in range(30000):
 
     observation = env.reset()
     ep_r = 0
-    if i_episode%100 ==0:
-        recent_100episodes_reward = []
+    if i_episode%100==0:
+        episodes_reward = []
         i = 0 
     while True:
         if RENDER:env.render()
@@ -58,21 +59,21 @@ for i_episode in range(10000):
         if total_steps % 1000 ==0:
             pass
             #print(RL.learn())
-    recent_100episodes_reward.append(ep_r)
+    episodes_reward.append(ep_r)
     i= i + 1
-    j = j+1
+    j= j + 1
     if i%5 ==0:
-        sum_r = recent_100episodes_reward[i-1]+recent_100episodes_reward[i-2]+recent_100episodes_reward[i-3]+recent_100episodes_reward[i-4]+recent_100episodes_reward[i-5]
+        sum_r = episodes_reward[i-1]+episodes_reward[i-2]+episodes_reward[i-3]+episodes_reward[i-4]+episodes_reward[i-5]
         print("Recent 5 episodes reward:",round(sum_r/5,5))
-        if sum_r/5 >=600:RENDER=True
+        if sum_r/5 >=550:RENDER=True
     if j%100==0:
-        recent_100episodes_reward.append((sum(recent_100episodes_reward)/i))
-        print("Recent 100 episodes' reward:",round(sum(recent_100episodes_reward)/100,5))
+        recent_100episodes_reward.append((sum(episodes_reward)/i))
+        print("Recent 100 episodes' reward:",round(sum(episodes_reward)/100,5))
 
     if j%300 == 0:
         print('Save successfully')
         RL.save(save_path)
-    a = i/100
+    a = j/100
 RL.plot_cost()
 def plot_reward():
     import numpy as np
