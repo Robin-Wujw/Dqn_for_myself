@@ -121,7 +121,7 @@ class DQNPrioritizedReplay:
             self,
             n_actions,
             n_features,
-            learning_rate=0.0005,
+            learning_rate=1e-5,
             reward_decay=0.99,
             e_greedy=0.95,
             replace_target_iter=300,
@@ -172,31 +172,35 @@ class DQNPrioritizedReplay:
         self.cost_his = []
 
     def _build_net(self):
-        def build_layers(s, c_names, n_l1, n_l2, w_initializer, b_initializer, trainable):
+        def build_layers(s, c_names, n_l1, n_l2,n_l3,w_initializer, b_initializer, trainable):
             with tf.variable_scope('l1'):
-                w1 = tf.get_variable('w1',[self.n_features,n_l1],initializer=w_initializer,collections=c_names,trainable=trainable)
-                b1 = tf.get_variable('b1',[1,n_l1],initializer=b_initializer,collections=c_names,trainable=trainable)
+                w1 = tf.get_variable('w1',[self.n_features,n_l1],initializer=w_initializer,collections=c_names)
+                b1 = tf.get_variable('b1',[1,n_l1],initializer=b_initializer,collections=c_names)
                 l1 = tf.nn.relu(tf.matmul(s,w1)+b1)
             with tf.variable_scope('l2'):
-                w2 = tf.get_variable('w2',[n_l1,n_l2],initializer=w_initializer,collections=c_names,trainable=trainable)
-                b2 = tf.get_variable('b2',[1,n_l2],initializer=w_initializer,collections=c_names,trainable=trainable)
+                w2 = tf.get_variable('w2',[n_l1,n_l2],initializer=w_initializer,collections=c_names)
+                b2 = tf.get_variable('b2',[1,n_l2],initializer=w_initializer,collections=c_names)
                 l2 = tf.nn.relu(tf.matmul(l1,w2)+b2)
+            # with tf.variable_scope('l3'):
+            #     w3 = tf.get_variable('w3',[n_l2,n_l3],initializer=w_initializer,collections=c_names)
+            #     b3 = tf.get_variable('b3',[1,n_l3],initializer=w_initializer,collections=c_names)
+            #     l3 = tf.nn.relu(tf.matmul(l2,w3)+b3)                    
             if self.dueling:
                 with tf.variable_scope('Value'):
-                    w3 = tf.get_variable('w3',[n_l2,1],initializer=w_initializer,collections=c_names,trainable=trainable)
-                    b3 = tf.get_variable('b3',[1,1],initializer=b_initializer,collections=c_names,trainable=trainable)
+                    w3 = tf.get_variable('w3',[n_l2,1],initializer=w_initializer,collections=c_names)
+                    b3 = tf.get_variable('b3',[1,1],initializer=b_initializer,collections=c_names)
                     self.V = tf.matmul(l2,w3)+b3
                 with tf.variable_scope('Advantage'):
-                    w4 = tf.get_variable('w4',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names,trainable=trainable)
-                    b4 = tf.get_variable('b4',[1,self.n_actions],initializer=b_initializer,collections=c_names,trainable=trainable)
+                    w4 = tf.get_variable('w4',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
+                    b4 = tf.get_variable('b4',[1,self.n_actions],initializer=b_initializer,collections=c_names)
                     self.A = tf.matmul(l2,w4)+b4
                 with tf.variable_scope('Q'):
                     #为了避免最终A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
                     out = self.V + (self.A - tf.reduce_mean(self.A,axis=1,keep_dims=True))
             else:
                 with tf.variable_scope('Q'):
-                    w5 = tf.get_variable('w5',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names,trainable=trainable)
-                    b5 = tf.get_variable('b5',[1,self.n_actions],initializer=b_initializer,collections=c_names,trainable=trainable)
+                    w5 = tf.get_variable('w5',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
+                    b5 = tf.get_variable('b5',[1,self.n_actions],initializer=b_initializer,collections=c_names)
                     out = tf.matmul(l2,w5)+b5
             return out 
 
@@ -206,11 +210,11 @@ class DQNPrioritizedReplay:
         if self.prioritized:
             self.ISWeights = tf.placeholder(tf.float32, [None, 1], name='IS_weights')
         with tf.variable_scope('eval_net'):
-            c_names, n_l1, n_l2,w_initializer, b_initializer = \
-                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 512, 128,\
+            c_names, n_l1, n_l2,n_l3,w_initializer, b_initializer = \
+                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 512,128,128,\
                 tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
 
-            self.q_eval = build_layers(self.s, c_names, n_l1, n_l2, w_initializer, b_initializer, True)
+            self.q_eval = build_layers(self.s, c_names, n_l1, n_l2,n_l3,w_initializer, b_initializer, True)
 
         with tf.variable_scope('loss'):
             if self.prioritized:
@@ -225,7 +229,7 @@ class DQNPrioritizedReplay:
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
         with tf.variable_scope('target_net'):
             c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
-            self.q_next = build_layers(self.s_, c_names, n_l1, n_l2,w_initializer, b_initializer, False)
+            self.q_next = build_layers(self.s_, c_names, n_l1, n_l2,n_l3,w_initializer, b_initializer, False)
 
     def store_transition(self, s, a, r, s_):
         if self.prioritized:    # prioritized replay

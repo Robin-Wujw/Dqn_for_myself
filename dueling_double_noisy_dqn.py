@@ -9,9 +9,9 @@ class Dueling_Double_DQN:
 		def __init__(self,
 					n_actions,
 					n_features,
-					learning_rate=0.0005,			
+					learning_rate=0.00025,
 					reward_decay=0.99,
-					e_greedy=0.95, replace_target_iter=300, 
+					e_greedy=0.95, replace_target_iter=200, 
 					memory_size=1000, batch_size=32,
 					e_greedy_increment=0.00008,
 					dueling = True,
@@ -49,7 +49,7 @@ class Dueling_Double_DQN:
 			self.sess.run(tf.global_variables_initializer())
 			self.cost_his = []
 		def _build_net(self):
-			n_l1, n_l2,w_initializer, b_initializer = 512,128,tf.random_normal_initializer(-0.1,0.1), tf.constant_initializer(0.1)  # config of layers			
+			n_l1, n_l2,n_l3,w_initializer, b_initializer = 256,128,64,tf.random_normal_initializer(-0.1,0.1), tf.constant_initializer(0.1)  # config of layers			
 			def noisy_dense(inputs, units, bias_shape, c_names, w_i=w_initializer, b_i=b_initializer, activation=tf.nn.relu, noisy_distribution='factorised'):
 					def f(e_list):
 						return tf.multiply(tf.sign(e_list), tf.pow(tf.abs(e_list), 0.5))
@@ -79,7 +79,7 @@ class Dueling_Double_DQN:
 							biases += tf.multiply(noise_2, b_noise)
 						return activation(dense + biases) if activation is not None else dense + biases
 					return activation(dense) if activation is not None else dense			
-			def build_layers(s,c_names,n_l1,n_l2,w_initializer,b_initializer,reg=None):
+			def build_layers(s,c_names,n_l1,n_l2,n_l3,w_initializer,b_initializer,reg=None):
 				if self.noisy:
 					with tf.variable_scope('l1'):
 						l1 = noisy_dense(s,n_l1,[n_l1],c_names,activation=tf.nn.relu)
@@ -106,23 +106,27 @@ class Dueling_Double_DQN:
 						w2 = tf.get_variable('w2',[n_l1,n_l2],initializer=w_initializer,collections=c_names)
 						b2 = tf.get_variable('b2',[1,n_l2],initializer=w_initializer,collections=c_names)
 						l2 = tf.nn.relu(tf.matmul(l1,w2)+b2)
+					with tf.variable_scope('l3'):
+						w3 = tf.get_variable('w3',[n_l2,n_l3],initializer=w_initializer,collections=c_names)
+						b3 = tf.get_variable('b3',[1,n_l3],initializer=w_initializer,collections=c_names)
+						l3 = tf.nn.relu(tf.matmul(l2,w3)+b3)
 					if self.dueling:
 						with tf.variable_scope('Value'):
-							w3 = tf.get_variable('w3',[n_l2,1],initializer=w_initializer,collections=c_names)
-							b3 = tf.get_variable('b3',[1,1],initializer=b_initializer,collections=c_names)
-							self.V = tf.matmul(l2,w3)+b3
+							w4 = tf.get_variable('w4',[n_l3,1],initializer=w_initializer,collections=c_names)
+							b4 = tf.get_variable('b4',[1,1],initializer=b_initializer,collections=c_names)
+							self.V = tf.matmul(l3,w4)+b4
 						with tf.variable_scope('Advantage'):
-							w4 = tf.get_variable('w4',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
-							b4 = tf.get_variable('b4',[1,self.n_actions],initializer=b_initializer,collections=c_names)
-							self.A = tf.matmul(l2,w4)+b4
+							w5 = tf.get_variable('w5',[n_l3,self.n_actions],initializer=w_initializer,collections=c_names)
+							b5 = tf.get_variable('b5',[1,self.n_actions],initializer=b_initializer,collections=c_names)
+							self.A = tf.matmul(l3,w5)+b5
 						with tf.variable_scope('Q'):
 							#为了避免最终A被学成Q(跟dqn效果一样)：当V=0时 A=Q,而A每次减去不同的值，不容易变成Q
 							out = self.V + (self.A - tf.reduce_mean(self.A,axis=1,keep_dims=True))
 					else:
 						with tf.variable_scope('Q'):
-							w5 = tf.get_variable('w5',[n_l2,self.n_actions],initializer=w_initializer,collections=c_names)
-							b5 = tf.get_variable('b5',[1,self.n_actions],initializer=b_initializer,collections=c_names)
-							out = tf.matmul(l2,w5)+b5
+							w6 = tf.get_variable('w6',[n_l3,self.n_actions],initializer=w_initializer,collections=c_names)
+							b6 = tf.get_variable('b6',[1,self.n_actions],initializer=b_initializer,collections=c_names)
+							out = tf.matmul(l3,w6)+b6
 					return out 
 
 						
@@ -131,10 +135,10 @@ class Dueling_Double_DQN:
 			self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Q_target') # 用来接收 q_target 的值, 这个之后会通过计算得到
 			with tf.variable_scope('eval_net'):
 				# c_names(collections_names) 是在更新 target_net 参数时会用到
-				c_names,n_l1, n_l2,w_initializer, b_initializer = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES],512, \
-				128,tf.random_normal_initializer(-0.1,0.1), tf.constant_initializer(0.1)  # config of layers
+				c_names,n_l1, n_l2,n_l3,w_initializer, b_initializer = ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES],256,128,\
+				64,tf.random_normal_initializer(-0.1,0.1), tf.constant_initializer(0.1)  # config of layers
 				regularizer = tf.contrib.layers.l2_regularizer(scale=0.2)  # 注意：只有select网络有l2正则化
-				self.q_eval = build_layers(self.s,c_names,n_l1,n_l2,w_initializer,b_initializer,regularizer)
+				self.q_eval = build_layers(self.s,c_names,n_l1,n_l2,n_l3,w_initializer,b_initializer,regularizer)
 
 
 			with tf.variable_scope('loss'): # 求误差
@@ -148,7 +152,7 @@ class Dueling_Double_DQN:
 				# c_names(collections_names) 是在更新 target_net 参数时会用到
 				c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
 
-				self.q_next = build_layers(self.s_,c_names,n_l1,n_l2,w_initializer,b_initializer)
+				self.q_next = build_layers(self.s_,c_names,n_l1,n_l2,n_l3,w_initializer,b_initializer)
 
 		def choose_action(self,observation):
 			#统一observation的shape(1,size_of_observation) 统一维度:（env中是[1,size of observation])
@@ -217,6 +221,7 @@ class Dueling_Double_DQN:
 			#逐渐增加epsilon 降低行为的随机性 
 			self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max 
 			self.learn_step_counter += 1 
+			return self.cost
 		def save(self,save_path):
 			#保存神经网络参数
 			tf.train.Saver().save(self.sess,save_path) 
