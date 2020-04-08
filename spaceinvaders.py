@@ -15,13 +15,13 @@ print(env.observation_space.high)
 print(env.observation_space.low)
 print(env.reward_range)
 
-inputImageSize = (100, 80, 1)
+inputImageSize = (84, 84, 1)
 # inputImageSize[2] = 1
 RL = DQNPrioritizedReplay(n_actions=env.action_space.n,
                   n_features=env.observation_space.shape[0],
                   observation_shape=inputImageSize,
-                  learning_rate=0.01, epsilon_max=0.9,
-                  replace_target_iter=300, memory_size=20000,
+                  learning_rate=0.00025, epsilon_max=0.9,
+                  replace_target_iter=300, memory_size=102400,
                   e_greedy_increment=0.0001,
                   output_graph=True)
 save_path = 'space_invaders_pixel'
@@ -96,7 +96,7 @@ for i_episode in range(6000):
     if i%10 ==0:
         sum_r = sum(episodes_reward[i-10:i])
         print("Recent 10 episodes reward:",round(sum_r/10,10))
-        if sum_r/10 >=570:RENDER=True
+        if sum_r/10 >=470:RENDER=True
     if j%100==0:
         recent_100episodes_reward.append((sum(episodes_reward)/i))
         print("Recent 100 episodes' reward:",round(sum(episodes_reward)/100,5))
